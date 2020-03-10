@@ -1,80 +1,105 @@
 <?php
-$youTubeUrl = "https://www.youtube.com/watch?v=ij1Vafu4Wh8";
-// $youTubeUrl = "https://www.youtube.com/watch?v=5R54QoUbbow";
+if( !empty($_GET['errmsg']) ) {
+	echo '<p style="color:red;width: 100%;">'.$_GET['errmsg'].'</p>';
+}
+?>
+<form class="wpuf-login-form" action="" method="get">
+  <p>
+    <label for="wpuf-user_login">Youtube URL</label>
+    <input type="text" name="you_tube_url" id="wpuf-user_login" class="input">
+  </p>
+  <p class="submit">
+    <input type="submit" value="Submit">
+  </p>
+</form>
 
-$parts = parse_url($youTubeUrl);
-parse_str($parts['query'], $query);
+<?php
+if( !empty($_GET['you_tube_url']) ) {
+	$you_tube_url = $_GET['you_tube_url'];
+	if (filter_var($you_tube_url, FILTER_VALIDATE_URL)) {
+		$parts = parse_url($you_tube_url);
+		parse_str($parts['query'], $query);
+		// Getting the params
+		if( !empty($query['v']) ) {
+		  $videoId = $query['v'];
+		  $videoDetails = getVideoDetails($videoId);
+		  $oXML = getCaption($videoId);
+		  $captionsXml = getCaptionsXml($videoId);
 
-// Getting the params
-if( !empty($query['v']) ) {
-  $videoId = $query['v'];
-  $videoDetails = getVideoDetails($videoId);
-  $oXML = getCaption($videoId);
-  $captionsXml = getCaptionsXml($videoId);
+		  if($videoDetails && $oXML && $captionsXml) {
+			$items    = count($oXML['text']);
+			$duration = $videoDetails['items'][0]['contentDetails']['duration'];
+			$minutes  = get_string_between($duration, 'PT', 'M');
+			$seconds  = get_string_between($duration, 'M', 'S');
+			$duration = $minutes*60+$seconds;
+			$npaths   = getXpathFromVideoDuration($duration);
 
-  if($videoDetails && $oXML && $captionsXml) {
-    $items    = count($oXML['text']);
-    $duration = $videoDetails['items'][0]['contentDetails']['duration'];
-    $minutes  = get_string_between($duration, 'PT', 'M');
-    $seconds  = get_string_between($duration, 'M', 'S');
-    $duration = $minutes*60+$seconds;
-    $npaths   = getXpathFromVideoDuration($duration);
+			// If npaths are present like 2, 4, 6, 8 etc it will generate rows
+			$rows = '';
+			if($npaths) {
+			  foreach ($npaths as $i => $number) {
+				$n = round(($number/10)*$items);
 
-    // If npaths are present
-    $rows = '';
-    // $rows = [];
-    if($npaths) {
-      foreach ($npaths as $i => $number) {
-        $n = round(($number/10)*$items);
+				$cells = '';
+				// Getting the nth, nth+1 path so it will generate columns
+				for ($i=0; $i <=2 ; $i++) {
+				  $string = '';
+				  $durations = [];
 
-        $cells = '';
-        // $cells = [];
-        for ($i=0; $i <=2 ; $i++) {
-          $string = '';
-          $durations = [];
+          // Removing the semicolon, comma from string so that proper column generate
+          $text = formatCsvColumn($oXML['text'][$n+$i]);
 
-          // Getting the start time for first nth part
-          if($i === 0) {
-            $j = 0;
-            foreach ($captionsXml->text as $data) {
-              if($j == $n) {
-                // foreach ($data->attributes() as $k => $v) {
-                $dataArray = json_decode(json_encode($data),true);
-                $durations = $dataArray['@attributes'];
-              }
-              $j++;
-            }
-          }
+				  // Getting the timestamps for each nth path from xml response
+					$j = 0;
+					foreach ($captionsXml->text as $data) {
+					  if($j == $n+$i) {
+  						// foreach ($data->attributes() as $k => $v) {
+  						$dataArray = json_decode(json_encode($data),true);
+  						$durations = $dataArray['@attributes'];
+					  }
+					  $j++;
+					}
           if(count($durations) > 0) {
-            // $startTime = convertTime($durations['start']);
-            $startTime = $durations['start'];
-            $string .= $startTime.' ';
+  					// $startTime = convertTime($durations['start']);
+  					$startTime = convertTime($durations['start']);
+  					$timestamp = $startTime;
+				  }
+          else {
+            $timestamp = '';
           }
-          $string .= $oXML['text'][$n+$i];
-          $string = trim(preg_replace('/\s+/', ' ', $string)).' ';
-          $string = str_replace(';','',$string);
-          $string = str_replace(',','',$string);
+          $cells .= $timestamp.';'.$text.';';
+				}
+				$rows .= $you_tube_url.';'.$cells."\n\r";
+				// fputcsv($fp, $cells, ";");
+				// $rows[] = $cells;
+				// $output .= "\r\n";
+				// echo $number.' - '.$output;
+				// echo "<br/><br/><br/>";
+			  }
+			}
 
-          // $cells .= rtrim($string, "\n");
-          // $cells[] = $string.' ';
-          $cells .= $string;
-        }
-        $rows .= $cells.",";
-        // fputcsv($fp, $cells, ";");
-        // $rows[] = $cells;
-        // $output .= "\r\n";
-        // echo $number.' - '.$output;
-        // echo "<br/><br/><br/>";
-      }
-    }
+			print_r($rows);
+			// echo $formatedString = str_putcsv($rows);
+			// downloadCsv($rows);
+			// echo '<pre>';
+			// print_r($oXML['text']);
+			// echo '</pre>';
+		  }
+		}
+	}
+	else {
+    echo $you_tube_url." is not a valid URL";
+		// global $wp;
+		// $redirectUrl = home_url( $wp->request )."/?errmsg=".$you_tube_url." is not a valid URL";
+		// wp_redirect($redirectUrl);
+		die;
+	}
+}
 
-    // print_r($rows);
-    // echo $formatedString = str_putcsv($rows);
-    downloadCsv($rows);
-    // echo '<pre>';
-    // print_r($oXML['text']);
-    // echo '</pre>';
-  }
+function formatCsvColumn( $string ) {
+  $s = trim(preg_replace('/\s+/', ' ', $string)).' ';
+  $s = str_replace(';','',$s);
+  return str_replace(',','',$s);
 }
 
 function getCaptionsXml($videoId, $lang='en') {
@@ -173,19 +198,21 @@ function str_putcsv($input, $delimiter = ',', $enclosure = '"') {
     return rtrim($data, "\n");
 }
 
-function convertTime($dec){
-    // start by converting to seconds
-    $seconds = ($dec * 3600);
-    // we're given hours, so let's get those the easy way
-    $hours = floor($dec);
-    // since we've "calculated" hours, let's remove them from the seconds variable
-    $seconds -= $hours * 3600;
-    // calculate minutes left
-    $minutes = floor($seconds / 60);
-    // remove those from seconds as well
-    $seconds -= $minutes * 60;
-    // return the time formatted HH:MM:SS
-    return lz($hours).":".lz($minutes).":".lz($seconds);
+function convertTime($seconds){
+
+    // // start by converting to seconds
+    // $seconds = ($dec * 3600);
+    // // we're given hours, so let's get those the easy way
+    // $hours = floor($dec);
+    // // since we've "calculated" hours, let's remove them from the seconds variable
+    // $seconds -= $hours * 3600;
+    // // calculate minutes left
+    // $minutes = floor($seconds / 60);
+    // // remove those from seconds as well
+    // $seconds -= $minutes * 60;
+    // // return the time formatted HH:MM:SS
+
+    return lz(round($seconds/3600)).":".lz(round($seconds/60)).":".lz(round($seconds/100));
 }
 
 function lz($num) {
