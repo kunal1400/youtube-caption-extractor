@@ -61,7 +61,7 @@ if( !empty($_GET['you_tube_url']) ) {
 					}
           if(count($durations) > 0) {
   					// $startTime = convertTime($durations['start']);
-  					$startTime = convertTime($durations['start']);
+  					$startTime = $durations['start'];
   					$timestamp = $startTime;
 				  }
           else {
@@ -78,9 +78,9 @@ if( !empty($_GET['you_tube_url']) ) {
 			  }
 			}
 
-			print_r($rows);
+			// print_r($rows);
 			// echo $formatedString = str_putcsv($rows);
-			// downloadCsv($rows);
+			downloadCsv($rows);
 			// echo '<pre>';
 			// print_r($oXML['text']);
 			// echo '</pre>';
@@ -96,6 +96,13 @@ if( !empty($_GET['you_tube_url']) ) {
 	}
 }
 
+function redirectWithMsg() {
+	// global $wp;
+	// $redirectUrl = home_url( $wp->request )."/?errmsg=".$you_tube_url." is not a valid URL";
+	// wp_redirect($redirectUrl);
+	// die;
+}
+
 function formatCsvColumn( $string ) {
   $s = trim(preg_replace('/\s+/', ' ', $string)).' ';
   $s = str_replace(';','',$s);
@@ -109,7 +116,13 @@ function getCaptionsXml($videoId, $lang='en') {
   curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
   $xmlfile = curl_exec($ch);
   curl_close($ch);
-  return simplexml_load_string($xmlfile);
+	// If response is not empty then xml
+	if( !empty($xmlfile) ) {
+		return simplexml_load_string($xmlfile);
+	} else {
+		echo "$url doesn't have any captions";
+		die;
+	}
 }
 
 function getCaption($videoId, $lang='en') {
@@ -182,7 +195,8 @@ function getXpathFromVideoDuration($videoDuration) {
 }
 
 function downloadCsv($csvString) {
-  ob_start();
+	ob_clean();
+	ob_start();
   $fileName = 'extracted_captions_'.time();
   header('Content-Type: application/csv');
   header('Content-Disposition: attachment; filename="'.$fileName.'.csv";');
