@@ -18,7 +18,6 @@ if( !empty($_GET['errmsg']) ) {
 </form>
 <?php
 get_footer();
-
 if( !empty($_GET['you_tube_url']) ) {
 	$you_tube_url = $_GET['you_tube_url'];
 	if (filter_var($you_tube_url, FILTER_VALIDATE_URL)) {
@@ -27,73 +26,71 @@ if( !empty($_GET['you_tube_url']) ) {
 		// Getting the params
 		if( !empty($query['v']) ) {
 		  $videoId = $query['v'];
+
 		  $videoDetails = getVideoDetails($videoId);
 		  $oXML = getCaption($videoId);
 		  $captionsXml = getCaptionsXml($videoId);
 
 		  if($videoDetails && $oXML && $captionsXml) {
-			$items    = count($oXML['text']);
-			$duration = $videoDetails['items'][0]['contentDetails']['duration'];
-			$minutes  = get_string_between($duration, 'PT', 'M');
-			$seconds  = get_string_between($duration, 'M', 'S');
-			$duration = $minutes*60+$seconds;
-			$npaths   = getXpathFromVideoDuration($duration);
+  			$items    = count($oXML['text']);
+  			$duration = $videoDetails['items'][0]['contentDetails']['duration'];
+  			$minutes  = get_string_between($duration, 'PT', 'M');
+  			$seconds  = get_string_between($duration, 'M', 'S');
+  			$duration = $minutes*60+$seconds;
+  			$npaths   = getXpathFromVideoDuration($duration);
 
-			// If npaths are present like 2, 4, 6, 8 etc it will generate rows
-			$rows = '';
-			if($npaths) {
-			  foreach ($npaths as $i => $number) {
-				$n = round(($number/10)*$items);
+  			// If npaths are present like 2, 4, 6, 8 etc it will generate rows
+  			$rows = '';
+  			if($npaths) {
+  			  foreach ($npaths as $i => $number) {
+  				$n = round(($number/10)*$items);
 
-				$cells = '';
-				// Getting the nth, nth+1 path so it will generate columns
-				for ($i=0; $i <=2 ; $i++) {
-				  $string = '';
-				  $durations = [];
+  				$cells = '';
+  				// Getting the nth, nth+1 path so it will generate columns
+  				for ($i=0; $i <=2 ; $i++) {
+  				  $string = '';
+  				  $durations = [];
 
-          // Removing the semicolon, comma from string so that proper column generate
-          $text = formatCsvColumn($oXML['text'][$n+$i]);
+            // Removing the semicolon, comma from string so that proper column generate
+            $text = formatCsvColumn($oXML['text'][$n+$i]);
 
-				  // Getting the timestamps for each nth path from xml response
-					$j = 0;
-					foreach ($captionsXml->text as $data) {
-					  if($j == $n+$i) {
-  						// foreach ($data->attributes() as $k => $v) {
-  						$dataArray = json_decode(json_encode($data),true);
-  						$durations = $dataArray['@attributes'];
-					  }
-					  $j++;
-					}
-          if(count($durations) > 0) {
-  					// $startTime = convertTime($durations['start']);
-  					$startTime = $durations['start'];
-  					$timestamp = $startTime;
-				  }
-          else {
-            $timestamp = '';
-          }
-          $cells .= $timestamp.';'.$text.';';
-				}
-				$rows .= $you_tube_url.';'.$cells."\n\r";
-				// fputcsv($fp, $cells, ";");
-				// $rows[] = $cells;
-				// $output .= "\r\n";
-				// echo $number.' - '.$output;
-				// echo "<br/><br/><br/>";
-			  }
-			}
+  				  // Getting the timestamps for each nth path from xml response
+  					$j = 0;
+  					foreach ($captionsXml->text as $data) {
+  					  if($j == $n+$i) {
+    						// foreach ($data->attributes() as $k => $v) {
+    						$dataArray = json_decode(json_encode($data),true);
+    						$durations = $dataArray['@attributes'];
+  					  }
+  					  $j++;
+  					}
+            if(count($durations) > 0) {
+    					$startTime = convertTime($durations['start']);
+//     					$startTime = $durations['start'];
+    					$timestamp = $startTime;
+  				  }
+            else {
+              $timestamp = '';
+            }
+            $cells .= $timestamp.';'.$text.';';
+  				}
+  				$rows .= $you_tube_url.';'.$cells."\n\r";
+  			  }
+  			}
 
-			// print_r($rows);
-			// echo $formatedString = str_putcsv($rows);
-			downloadCsv($rows);
-			// echo '<pre>';
-			// print_r($oXML['text']);
-			// echo '</pre>';
+//   			print_r($rows);
+// 			  die;
+  			// echo $formatedString = str_putcsv($rows);
+  			downloadCsv($rows);
+  			// echo '<pre>';
+  			// print_r($oXML['text']);
+  			// echo '</pre>';
 		  }
+
 		}
 	}
 	else {
-    	// echo $you_tube_url." is not a valid URL";
+    // echo $you_tube_url." is not a valid URL";
 		global $wp;
 		$redirectUrl = home_url( $wp->request )."/?errmsg=".$you_tube_url." is not a valid URL";
 		wp_redirect($redirectUrl);
@@ -114,21 +111,21 @@ function formatCsvColumn( $string ) {
   return str_replace(',','',$s);
 }
 
-function getCaptionsXml($videoId, $lang='en') {
-  $url = "https://www.youtube.com/api/timedtext?lang=$lang&v=$videoId";
-  $ch = curl_init();
-  curl_setopt($ch, CURLOPT_URL, $url);
-  curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-  $xmlfile = curl_exec($ch);
-  curl_close($ch);
-	// If response is not empty then xml
-	if( !empty($xmlfile) ) {
-		return simplexml_load_string($xmlfile);
-	} else {
-		echo "$url doesn't have any captions";
-		die;
-	}
-}
+// function getCaptionsXml($videoId, $lang='en') {
+//   $url = "https://www.youtube.com/api/timedtext?lang=$lang&v=$videoId";
+//   $ch = curl_init();
+//   curl_setopt($ch, CURLOPT_URL, $url);
+//   curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+//   $xmlfile = curl_exec($ch);
+//   curl_close($ch);
+// 	// If response is not empty then xml
+// 	if( !empty($xmlfile) ) {
+// 		return simplexml_load_string($xmlfile);
+// 	} else {
+// 		echo "$url doesn't have any captions";
+// 		die;
+// 	}
+// }
 
 function getCaption($videoId, $lang='en') {
   $new = getCaptionsXml($videoId, $lang);
@@ -218,22 +215,73 @@ function str_putcsv($input, $delimiter = ',', $enclosure = '"') {
 }
 
 function convertTime($seconds){
-
-    // // start by converting to seconds
-    // $seconds = ($dec * 3600);
-    // // we're given hours, so let's get those the easy way
-    // $hours = floor($dec);
-    // // since we've "calculated" hours, let's remove them from the seconds variable
-    // $seconds -= $hours * 3600;
-    // // calculate minutes left
-    // $minutes = floor($seconds / 60);
-    // // remove those from seconds as well
-    // $seconds -= $minutes * 60;
-    // // return the time formatted HH:MM:SS
-
-    return lz(round($seconds/3600)).":".lz(round($seconds/60)).":".lz(round($seconds/100));
+	$t = round($seconds);
+	return sprintf('%02d:%02d:%02d', ($t/3600),($t/60%60), $t%60);
 }
 
-function lz($num) {
-    return (strlen($num) < 2) ? "0{$num}" : $num;
+function callGetRequest($url) {
+  $curl = curl_init();
+  curl_setopt($curl, CURLOPT_URL, $url);
+  curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+  $return = curl_exec($curl);
+  curl_close($curl);
+  return $return;
+}
+
+function getCaptionsXml($videoId, $lang='en') {
+
+  $url = "https://www.youtube.com/get_video_info?video_id=$videoId";
+  $return = callGetRequest($url);
+
+  // $arrayData = json_decode($return, true);
+  $urlDecode = urldecode($return);
+
+  if(strpos($urlDecode,"captionTracks")) {
+    foreach (explode('&', $urlDecode) as $chunk) {
+
+      // Because the position can be 0
+      $isPresent = strpos($chunk, "player_response=");
+      if($isPresent === 0) {
+        $json = str_replace("player_response=","",$chunk);
+        if($json) {
+          $jsonArray = json_decode($json, true);
+          if($jsonArray['captions']) {
+            if($jsonArray['captions']['playerCaptionsTracklistRenderer']) {
+              $captionTracks = $jsonArray['captions']['playerCaptionsTracklistRenderer']['captionTracks'];
+              $nextInfo = null;
+              foreach($captionTracks as $i => $v) {
+                if($v['languageCode'] == $lang) {
+                  $nextInfo = $lang;
+                  break;
+                }
+              }
+
+              if($nextInfo) {
+                $xmldata = callGetRequest($v['baseUrl']);
+                return simplexml_load_string($xmldata);
+              }
+              else {
+                echo json_encode(array('status' => false, 'msg' => "Could not find $lang captions for $videoId"));
+                die;
+              }
+            }
+            else {
+              echo json_encode(array('status' => false, 'msg' => 'playerCaptionsTracklistRenderer key is not present'));
+              die;
+            }
+          }
+          else {
+            echo json_encode(array('status' => false, 'msg' =>'captions key is not present'));
+            die;
+          }
+        } else {
+          echo json_encode(array('status' => false, 'msg' => "player_response= is not a json"));
+          die;
+        }
+      }
+    }
+  } else {
+    echo json_encode(array('status' => false, 'msg' => "Could not find captions for video $videoId"));
+    die;
+  }
 }
