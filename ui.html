@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Youtube captions downloader</title>
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  
+  <div class="ytContainer" >
+    <div class='ytElement' id='div_1'>
+      <div class="error"></div>
+      <input type='text' name="you_tube_url" placeholder='Enter your skill' id='txt_1' >&nbsp;
+      <span class='add'>Add Skill</span>
+      <a data-parentId='div_1' onclick="startDownload(this)">Download</a>
+    </div>
+  </div>  
+
+  <script type="text/javascript">
+
+    function validURL(str) {
+      var pattern = new RegExp('^(https?:\\/\\/)?'+ // protocol
+        '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // domain name
+        '((\\d{1,3}\\.){3}\\d{1,3}))'+ // OR ip (v4) address
+        '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'+ // port and path
+        '(\\?[;&a-z\\d%_.~+=-]*)?'+ // query string
+        '(\\#[-a-z\\d_]*)?$','i'); // fragment locator
+      return !!pattern.test(str);
+    }    
+
+    function startDownload(parentId) {
+      if(parentId) {
+        var pId    = jQuery(parentId).attr("data-parentId")
+        var parent = document.getElementById(pId)
+        var youtubeurl = jQuery(parent).find('input[name="you_tube_url"]').val();
+        // var inputU = jQuery(parent).find('input[name="you_tube_url"]');
+
+        if(youtubeurl) {
+          // Removing the error message on click of download
+          jQuery(parent).find('div.error').val();
+
+          var isValidUrl = validURL(youtubeurl);
+          if(isValidUrl) {
+            // send this url to api so that user can download the file
+            window.open('http://localhost/test/test.php?you_tube_url='+youtubeurl,'_blank');
+            jQuery(parent).find('input[name="you_tube_url"]').attr("disabled","true");
+          } 
+          else {
+            jQuery(parent).find('div.error').text("Invalid Url");
+          }
+        } 
+        else {
+          jQuery(parent).find('div.error').text("url is empty");
+        }
+      }
+      else {
+        alert("parentId is missing")
+      }      
+    }
+
+
+    $(document).ready(function(){
+
+     // Add new element
+     $(".add").click(function(){
+
+      // Finding total number of element added
+      var total_ytElement = $(".ytElement").length;
+     
+      // last <div> with element class id
+      var lastid = $(".ytElement:last").attr("id");
+      var split_id = lastid.split("_");
+      var nextindex = Number(split_id[1]) + 1;
+
+      var max = 5;
+      // Check total number element
+      if(total_ytElement < max ){
+       // Adding new div ytContainer after last occurance of element class
+       $(".ytElement:last").after("<div class='ytElement' id='div_"+ nextindex +"'></div>");
+     
+       // Adding element to <div>
+       $("#div_" + nextindex).append("<div class='error'></div><input type='text' name='you_tube_url' placeholder='Enter your skill' id='txt_"+ nextindex +"'>&nbsp;<span id='remove_" + nextindex + "' class='remove'>X</span><a data-parentId='div_"+ nextindex +"' onclick='startDownload(this)'>Download</a>");   
+      }
+     
+     });
+
+     // Remove element
+     $('.ytContainer').on('click','.remove',function(){
+     
+      var id = this.id;
+      var split_id = id.split("_");
+      var deleteindex = split_id[1];
+
+      // Remove <div> with id
+      $("#div_" + deleteindex).remove();
+
+     }); 
+    });
+  </script>
+
+</body>
+</html>
