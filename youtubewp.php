@@ -39,7 +39,7 @@ table.ytContainer td {
       <div class="error"></div>
       <input type='text' name="you_tube_url" placeholder='Youtube URL' id='txt_1' >
     </td>
-    <td width="120"><span class='btn add blueButton'>Add Skill</span></td>
+    <td width="120"><span class='btn add blueButton'>Add More</span></td>
 	<td width="120"><a class='btn blackButton' data-parentId='div_1' onclick="startDownload(this)">Download</a></td>
 	</tr>
 </table>
