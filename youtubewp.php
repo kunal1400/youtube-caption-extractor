@@ -3,11 +3,47 @@
  * Template Name: Custom Page
  **/
 get_header();
-if( !empty($_GET['errmsg']) ) {
-	echo '<p style="color:red;width: 100%;">'.$_GET['errmsg'].'</p>';
-}
 ?>
-<form class="wpuf-login-form" action="" method="get">
+<style>
+.error {
+	text-align: left;
+    color: red;
+    font-style: italic;
+}
+.btn {
+    padding: 5px 10px;
+    margin: 0 5px 0 0;    
+    color: #fff;
+    border-radius: 14px;
+    cursor: pointer;
+}
+.blueButton {
+	background-color: #4054b2;
+}
+.blackButton {
+    background-color: #16181a;
+}
+.redButton {
+    background-color: red;
+}
+table.ytContainer td {
+    padding: 2px;
+    margin: 0;
+    border: 0;
+    text-align: center;
+}
+</style>
+<table class="ytContainer" >
+	<tr class='ytElement' id='div_1'>
+    <td>
+      <div class="error"></div>
+      <input type='text' name="you_tube_url" placeholder='Youtube URL' id='txt_1' >
+    </td>
+    <td width="120"><span class='btn add blueButton'>Add Skill</span></td>
+	<td width="120"><a class='btn blackButton' data-parentId='div_1' onclick="startDownload(this)">Download</a></td>
+	</tr>
+</table>
+<!-- <form class="wpuf-login-form" action="" method="get">
   <p>
     <label for="wpuf-user_login">Youtube URL</label>
     <input type="text" name="you_tube_url" id="wpuf-user_login" class="input">
@@ -15,7 +51,87 @@ if( !empty($_GET['errmsg']) ) {
   <p class="submit">
     <input type="submit" value="Submit">
   </p>
-</form>
+</form> -->
+<script type="text/javascript">
+	function validURL(str) {
+      var pattern = new RegExp('^(https?:\\/\\/)?'+ // protocol
+        '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // domain name
+        '((\\d{1,3}\\.){3}\\d{1,3}))'+ // OR ip (v4) address
+        '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'+ // port and path
+        '(\\?[;&a-z\\d%_.~+=-]*)?'+ // query string
+        '(\\#[-a-z\\d_]*)?$','i'); // fragment locator
+      return !!pattern.test(str);
+    }    
+
+    function startDownload(parentId) {
+      if(parentId) {
+        var pId    = jQuery(parentId).attr("data-parentId")
+        var parent = document.getElementById(pId)
+        var youtubeurl = jQuery(parent).find('input[name="you_tube_url"]').val();
+        // var inputU = jQuery(parent).find('input[name="you_tube_url"]');
+
+        if(youtubeurl) {
+          // Removing the error message on click of download
+          jQuery(parent).find('div.error').val();
+
+          var isValidUrl = validURL(youtubeurl);
+          if(isValidUrl) {
+            // send this url to api so that user can download the file
+            window.open('?you_tube_url='+youtubeurl,'_blank');
+            jQuery(parent).find('input[name="you_tube_url"]').attr("disabled","true");
+          } 
+          else {
+            jQuery(parent).find('div.error').text("Invalid Url");
+          }
+        } 
+        else {
+          jQuery(parent).find('div.error').text("url is empty");
+        }
+      }
+      else {
+        alert("parentId is missing")
+      }      
+    }
+
+
+    jQuery(document).ready(function(){
+
+     // Add new element
+     jQuery(".add").click(function(){
+
+      // Finding total number of element added
+      var total_ytElement = jQuery(".ytElement").length;
+     
+      // last <div> with element class id
+      var lastid = jQuery(".ytElement:last").attr("id");
+      var split_id = lastid.split("_");
+      var nextindex = Number(split_id[1]) + 1;
+
+      var max = 50;
+      // Check total number element
+      if(total_ytElement < max ){
+       // Adding new div ytContainer after last occurance of element class
+       jQuery(".ytElement:last").after("<tr class='ytElement' id='div_"+ nextindex +"'></tr>");
+     
+       // Adding element to <div>
+       jQuery("#div_" + nextindex).append("<td><div class='error'></div><input type='text' name='you_tube_url' placeholder='Youtube URL' id='txt_"+ nextindex +"'></td><td><span id='remove_" + nextindex + "' class='btn redButton remove'>X</span></td><td><a class='btn add blackButton' data-parentId='div_"+ nextindex +"' onclick='startDownload(this)'>Download</a></td>");   
+      }
+     
+     });
+
+     // Remove element
+     jQuery('.ytContainer').on('click','.remove',function(){
+     
+      var id = this.id;
+      var split_id = id.split("_");
+      var deleteindex = split_id[1];
+
+      // Remove <div> with id
+      jQuery("#div_" + deleteindex).remove();
+
+     }); 
+    });
+</script>
 <?php
 get_footer();
 if( !empty($_GET['you_tube_url']) ) {
