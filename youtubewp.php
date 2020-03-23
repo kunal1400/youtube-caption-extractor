@@ -34,6 +34,15 @@ table.ytContainer td {
 }
 </style>
 <table class="ytContainer" >
+	<tr>
+		<td>
+			<div class="error"></div>
+			<textarea name="name" rows="8" cols="80"></textarea>
+		</td>
+		<td width="120"><span onclick="startDownloadFromTextarea()" class='btn blueButton'>Download</span></td>
+	</tr>
+</table>
+<table class="ytContainer" >
 	<tr class='ytElement' id='div_1'>
     <td>
       <div class="error"></div>
@@ -53,6 +62,7 @@ table.ytContainer td {
   </p>
 </form> -->
 <script type="text/javascript">
+	var allUrls = []
 	function validURL(str) {
       var pattern = new RegExp('^(https?:\\/\\/)?'+ // protocol
         '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // domain name
@@ -61,8 +71,62 @@ table.ytContainer td {
         '(\\?[;&a-z\\d%_.~+=-]*)?'+ // query string
         '(\\#[-a-z\\d_]*)?$','i'); // fragment locator
       return !!pattern.test(str);
-    }    
+    }
+		
+	function startDownloadFromTextarea() {
+		var commasepratevalue = document.getElementsByTagName("textarea")[0].value;
+		if(commasepratevalue) {
+		  var commaAllsepratearray = commasepratevalue.split(",")
+		  var commasepratearray = jQuery.unique(commaAllsepratearray)
 
+		  // If array is present
+		  if( Array.isArray(commasepratearray) ) {
+			commasepratearray.forEach(function(youtubeurl, index) {
+			  // console.log(index, youtubeurl, "index, youtubeurl")
+			  if(youtubeurl) {
+				// Removing the error message on click of download
+				jQuery('div.error').val();
+				var trimUrl = youtubeurl.trim()
+				var isValidUrl = validURL(trimUrl);
+				if(isValidUrl) {
+				  // send this url to api so that user can download the file
+				  allUrls.push('?you_tube_url='+trimUrl)
+				  // window.open('?you_tube_url='+trimUrl,'_blank');
+				}
+				else {
+				  jQuery('div.error').text(youtubeurl+" is invalid Url");
+				  // break;
+				}
+			  }
+
+			  // Check it urls are working
+			  if( index == commasepratearray.length - 1) {
+				var allUniqueUrls = jQuery.unique(allUrls);
+				var allUrlsCount = allUniqueUrls.length;
+
+				// Setting the timer
+				var timer = setInterval( function() {
+				  if(allUrlsCount>0) {
+					var index = allUrlsCount-1;
+					var url = allUrls[index]
+					console.log(url, index, "url")
+					window.open(url, "_blank")
+					allUrlsCount--;
+				  }
+				  else {
+					clearInterval(timer)
+				  }
+				}, 100);
+			  }
+
+			})
+		  }
+		}
+		else {
+		  alert("Please enter an value")
+		} 
+	  }
+		
     function startDownload(parentId) {
       if(parentId) {
         var pId    = jQuery(parentId).attr("data-parentId")
@@ -147,62 +211,65 @@ if( !empty($_GET['you_tube_url']) ) {
 		  $oXML = getCaption($videoId);
 		  $captionsXml = getCaptionsXml($videoId);
 
-		  if($videoDetails && $oXML && $captionsXml) {
-  			$items    = count($oXML['text']);
-  			$duration = $videoDetails['items'][0]['contentDetails']['duration'];
-  			$minutes  = get_string_between($duration, 'PT', 'M');
-  			$seconds  = get_string_between($duration, 'M', 'S');
-  			$duration = $minutes*60+$seconds;
-  			$npaths   = getXpathFromVideoDuration($duration);
+			if($videoDetails && $oXML && $captionsXml) {
+				$items    = count($oXML['text']);
+				$ytDuration = $videoDetails['items'][0]['contentDetails']['duration'];
+				$duration = covtime($ytDuration);
+				if($duration) {
+					$times = explode(":", $duration);
+					$hour = $times[0];
+					$minutes = $times[1];
+					$seconds = $times[2];
+					$duration = $hour*3600+$minutes*60+$seconds;
+					$npaths   = getXpathFromVideoDuration($duration);
 
-  			// If npaths are present like 2, 4, 6, 8 etc it will generate rows
-  			$rows = '';
-  			if($npaths) {
-  			  foreach ($npaths as $i => $number) {
-  				$n = round(($number/10)*$items);
+					// If npaths are present like 2, 4, 6, 8 etc it will generate rows
+					$rows = '';
+					if($npaths) {
+						foreach ($npaths as $i => $number) {
+							$n = round(($number/10)*$items);
 
-  				$cells = '';
-  				// Getting the nth, nth+1 path so it will generate columns
-  				for ($i=0; $i <=2 ; $i++) {
-  				  $string = '';
-  				  $durations = [];
+							$cells = '';
+							// Getting the nth, nth+1 path so it will generate columns
+							for ($i=0; $i <=2 ; $i++) {
+								$string = '';
+								$durations = [];
 
-            // Removing the semicolon, comma from string so that proper column generate
-            $text = formatCsvColumn($oXML['text'][$n+$i]);
+								// Removing the semicolon, comma from string so that proper column generate
+								$text = formatCsvColumn($oXML['text'][$n+$i]);
 
-  				  // Getting the timestamps for each nth path from xml response
-  					$j = 0;
-  					foreach ($captionsXml->text as $data) {
-  					  if($j == $n+$i) {
-    						// foreach ($data->attributes() as $k => $v) {
-    						$dataArray = json_decode(json_encode($data),true);
-    						$durations = $dataArray['@attributes'];
-  					  }
-  					  $j++;
-  					}
-            if(count($durations) > 0) {
-    					$startTime = convertTime($durations['start']);
-//     					$startTime = $durations['start'];
-    					$timestamp = $startTime;
-  				  }
-            else {
-              $timestamp = '';
-            }
-            $cells .= $timestamp.';'.$text.';';
-  				}
-  				$rows .= $you_tube_url.';'.$cells."\n\r";
-  			  }
-  			}
+								// Getting the timestamps for each nth path from xml response
+								$j = 0;
+								foreach ($captionsXml->text as $data) {
+									if($j == $n+$i) {
+										// foreach ($data->attributes() as $k => $v) {
+										$dataArray = json_decode(json_encode($data),true);
+										$durations = $dataArray['@attributes'];
+									}
+									$j++;
+								}
+								if(count($durations) > 0) {
+									$startTime = convertTime($durations['start']);
+									// $startTime = $durations['start'];
+									$timestamp = $startTime;
+								}
+								else {
+									$timestamp = '';
+								}
+								$cells .= $timestamp.';'.$text.';';
+							}
+							$rows .= $you_tube_url.';'.$cells."\n\r";
+						}
+					}
 
-//   			print_r($rows);
-// 			  die;
-  			// echo $formatedString = str_putcsv($rows);
-  			downloadCsv($rows);
-  			// echo '<pre>';
-  			// print_r($oXML['text']);
-  			// echo '</pre>';
-		  }
-
+					// print_r($rows);
+					// echo $formatedString = str_putcsv($rows);
+					downloadCsv($rows);
+					// echo '<pre>';
+					// print_r($oXML['text']);
+					// echo '</pre>';
+				}
+			}
 		}
 	}
 	else {
@@ -400,4 +467,10 @@ function getCaptionsXml($videoId, $lang='en') {
     echo json_encode(array('status' => false, 'msg' => "Could not find captions for video $videoId"));
     die;
   }
+}
+
+function covtime($youtube_time){
+    $start = new DateTime('@0'); // Unix epoch
+    $start->add(new DateInterval($youtube_time));
+    return $start->format('H:i:s');
 }
