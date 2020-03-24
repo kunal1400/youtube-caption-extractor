@@ -39,6 +39,17 @@ table.ytContainer td {
 			<div class="error"></div>
 			<textarea name="name" rows="8" cols="80"></textarea>
 		</td>
+		<td width="100">
+			<select id="captionLang">				
+			  <option value="en">English</option>
+			  <option value="de">German</option>
+			  <option value="nl">Dutch</option>
+			  <option value="es">Spanish</option>
+			  <option value="fr">French</option>
+			  <option value="pt">Portuguese</option>
+			  <option value="sv">Swedish</option>
+			</select>
+		</td>
 		<td width="120"><span onclick="startDownloadFromTextarea()" class='btn blueButton'>Download</span></td>
 	</tr>
 </table>
@@ -74,8 +85,9 @@ table.ytContainer td {
     }
 		
 	function startDownloadFromTextarea() {
+		var captionLang = document.getElementById("captionLang").value;
 		var commasepratevalue = document.getElementsByTagName("textarea")[0].value;
-		if(commasepratevalue) {
+		if(commasepratevalue && captionLang) {
 		  var commaAllsepratearray = commasepratevalue.split(",")
 		  var commasepratearray = jQuery.unique(commaAllsepratearray)
 
@@ -90,7 +102,7 @@ table.ytContainer td {
 				var isValidUrl = validURL(trimUrl);
 				if(isValidUrl) {
 				  // send this url to api so that user can download the file
-				  allUrls.push('?you_tube_url='+trimUrl)
+				  allUrls.push('?you_tube_url='+trimUrl+'&lang='+captionLang)
 				  // window.open('?you_tube_url='+trimUrl,'_blank');
 				}
 				else {
@@ -206,10 +218,15 @@ if( !empty($_GET['you_tube_url']) ) {
 		// Getting the params
 		if( !empty($query['v']) ) {
 		  $videoId = $query['v'];
-
+			
+		  $lang = 'en';
+		  if (!empty($_GET['lang'])) {
+			$lang = $_GET['lang'];
+		  }
+			
 		  $videoDetails = getVideoDetails($videoId);
-		  $oXML = getCaption($videoId);
-		  $captionsXml = getCaptionsXml($videoId);
+		  $oXML = getCaption($videoId,$lang);
+		  $captionsXml = getCaptionsXml($videoId,$lang);
 
 			if($videoDetails && $oXML && $captionsXml) {
 				$items    = count($oXML['text']);
@@ -258,7 +275,7 @@ if( !empty($_GET['you_tube_url']) ) {
 								}
 								$cells .= $timestamp.';'.$text.';';
 							}
-							$rows .= $you_tube_url.';'.$cells."\n\r";
+							$rows .= $you_tube_url.';'.$cells;
 						}
 					}
 
