@@ -2,11 +2,100 @@
 /**
  * Template Name: Custom Page
  **/
+
+if( !empty($_GET['you_tube_url']) ) {
+  $you_tube_url = $_GET['you_tube_url'];
+  if (filter_var($you_tube_url, FILTER_VALIDATE_URL)) {
+    $parts = parse_url($you_tube_url);
+    parse_str($parts['query'], $query);
+    // Getting the params
+    if( !empty($query['v']) ) {
+      $videoId = $query['v'];
+      
+      $lang = 'en';
+      if (!empty($_GET['lang'])) {
+      $lang = $_GET['lang'];
+      }
+      
+      $videoDetails = getVideoDetails($videoId);
+      $oXML = getCaption($videoId,$lang);
+      $captionsXml = getCaptionsXml($videoId,$lang);
+
+      if($videoDetails && $oXML && $captionsXml) {
+        $items    = count($oXML['text']);
+        $ytDuration = $videoDetails['items'][0]['contentDetails']['duration'];
+        $duration = covtime($ytDuration);
+        if($duration) {
+          $times = explode(":", $duration);
+          $hour = $times[0];
+          $minutes = $times[1];
+          $seconds = $times[2];
+          $duration = $hour*3600+$minutes*60+$seconds;
+          $npaths   = getXpathFromVideoDuration($duration);
+
+          // If npaths are present like 2, 4, 6, 8 etc it will generate rows
+          $rows = '';
+          if($npaths) {
+            foreach ($npaths as $i => $number) {
+              $n = round(($number/10)*$items);
+
+              $cells = '';
+              // Getting the nth, nth+1 path so it will generate columns
+              for ($i=0; $i <=2 ; $i++) {
+                $string = '';
+                $durations = [];
+
+                // Removing the semicolon, comma from string so that proper column generate
+                $text = formatCsvColumn($oXML['text'][$n+$i]);
+
+                // Getting the timestamps for each nth path from xml response
+                $j = 0;
+                foreach ($captionsXml->text as $data) {
+                  if($j == $n+$i) {
+                    // foreach ($data->attributes() as $k => $v) {
+                    $dataArray = json_decode(json_encode($data),true);
+                    $durations = $dataArray['@attributes'];
+                  }
+                  $j++;
+                }
+                if(count($durations) > 0) {
+                  $startTime = convertTime($durations['start']);
+                  // $startTime = $durations['start'];
+                  $timestamp = $startTime;
+                }
+                else {
+                  $timestamp = '';
+                }
+                $cells .= $timestamp.';'.$text.';';
+              }
+              $rows .= $you_tube_url.';'.$cells;
+            }
+          }
+
+          // print_r($rows);
+          // echo $formatedString = str_putcsv($rows);
+          downloadCsv($rows);
+          // echo '<pre>';
+          // print_r($oXML['text']);
+          // echo '</pre>';
+        }
+      }
+    }
+  }
+  else {
+    // echo $you_tube_url." is not a valid URL";
+    global $wp;
+    $redirectUrl = home_url( $wp->request )."/?errmsg=".$you_tube_url." is not a valid URL";
+    wp_redirect($redirectUrl);
+  }
+  die;
+}
+
 get_header();
 ?>
 <style>
 .error {
-	text-align: left;
+  text-align: left;
     color: red;
     font-style: italic;
 }
@@ -18,7 +107,7 @@ get_header();
     cursor: pointer;
 }
 .blueButton {
-	background-color: #4054b2;
+  background-color: #4054b2;
 }
 .blackButton {
     background-color: #16181a;
@@ -34,34 +123,34 @@ table.ytContainer td {
 }
 </style>
 <table class="ytContainer" >
-	<tr>
-		<td>
-			<div class="error"></div>
-			<textarea name="name" rows="8" cols="80"></textarea>
-		</td>
-		<td width="100">
-			<select id="captionLang">				
-			  <option value="en">English</option>
-			  <option value="de">German</option>
-			  <option value="nl">Dutch</option>
-			  <option value="es">Spanish</option>
-			  <option value="fr">French</option>
-			  <option value="pt">Portuguese</option>
-			  <option value="sv">Swedish</option>
-			</select>
-		</td>
-		<td width="120"><span onclick="startDownloadFromTextarea()" class='btn blueButton'>Download</span></td>
-	</tr>
+  <tr>
+    <td>
+      <div class="error"></div>
+      <textarea name="name" rows="8" cols="80"></textarea>
+    </td>
+    <td width="100">
+      <select id="captionLang">       
+        <option value="en">English</option>
+        <option value="de">German</option>
+        <option value="nl">Dutch</option>
+        <option value="es">Spanish</option>
+        <option value="fr">French</option>
+        <option value="pt">Portuguese</option>
+        <option value="sv">Swedish</option>
+      </select>
+    </td>
+    <td width="120"><span onclick="startDownloadFromTextarea()" class='btn blueButton'>Download</span></td>
+  </tr>
 </table>
-<table class="ytContainer" >
-	<tr class='ytElement' id='div_1'>
+<table style="display:none" class="ytContainer" >
+  <tr class='ytElement' id='div_1'>
     <td>
       <div class="error"></div>
       <input type='text' name="you_tube_url" placeholder='Youtube URL' id='txt_1' >
     </td>
     <td width="120"><span class='btn add blueButton'>Add More</span></td>
-	<td width="120"><a class='btn blackButton' data-parentId='div_1' onclick="startDownload(this)">Download</a></td>
-	</tr>
+  <td width="120"><a class='btn blackButton' data-parentId='div_1' onclick="startDownload(this)">Download</a></td>
+  </tr>
 </table>
 <!-- <form class="wpuf-login-form" action="" method="get">
   <p>
@@ -73,8 +162,8 @@ table.ytContainer td {
   </p>
 </form> -->
 <script type="text/javascript">
-	var allUrls = []
-	function validURL(str) {
+  var allUrls = []
+  function validURL(str) {
       var pattern = new RegExp('^(https?:\\/\\/)?'+ // protocol
         '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // domain name
         '((\\d{1,3}\\.){3}\\d{1,3}))'+ // OR ip (v4) address
@@ -83,62 +172,62 @@ table.ytContainer td {
         '(\\#[-a-z\\d_]*)?$','i'); // fragment locator
       return !!pattern.test(str);
     }
-		
-	function startDownloadFromTextarea() {
-		var captionLang = document.getElementById("captionLang").value;
-		var commasepratevalue = document.getElementsByTagName("textarea")[0].value;
-		if(commasepratevalue && captionLang) {
-		  var commaAllsepratearray = commasepratevalue.split(",")
-		  var commasepratearray = jQuery.unique(commaAllsepratearray)
+    
+  function startDownloadFromTextarea() {
+    var captionLang = document.getElementById("captionLang").value;
+    var commasepratevalue = document.getElementsByTagName("textarea")[0].value;
+    if(commasepratevalue && captionLang) {
+      var commaAllsepratearray = commasepratevalue.split(",")
+      var commasepratearray = jQuery.unique(commaAllsepratearray)
 
-		  // If array is present
-		  if( Array.isArray(commasepratearray) ) {
-			commasepratearray.forEach(function(youtubeurl, index) {
-			  // console.log(index, youtubeurl, "index, youtubeurl")
-			  if(youtubeurl) {
-				// Removing the error message on click of download
-				jQuery('div.error').val();
-				var trimUrl = youtubeurl.trim()
-				var isValidUrl = validURL(trimUrl);
-				if(isValidUrl) {
-				  // send this url to api so that user can download the file
-				  allUrls.push('?you_tube_url='+trimUrl+'&lang='+captionLang)
-				  // window.open('?you_tube_url='+trimUrl,'_blank');
-				}
-				else {
-				  jQuery('div.error').text(youtubeurl+" is invalid Url");
-				  // break;
-				}
-			  }
+      // If array is present
+      if( Array.isArray(commasepratearray) ) {
+      commasepratearray.forEach(function(youtubeurl, index) {
+        // console.log(index, youtubeurl, "index, youtubeurl")
+        if(youtubeurl) {
+        // Removing the error message on click of download
+        jQuery('div.error').val();
+        var trimUrl = youtubeurl.trim()
+        var isValidUrl = validURL(trimUrl);
+        if(isValidUrl) {
+          // send this url to api so that user can download the file
+          allUrls.push('?you_tube_url='+encodeURIComponent(trimUrl)+'&lang='+captionLang)
+          // window.open('?you_tube_url='+trimUrl,'_blank');
+        }
+        else {
+          jQuery('div.error').text(youtubeurl+" is invalid Url");
+          // break;
+        }
+        }
 
-			  // Check it urls are working
-			  if( index == commasepratearray.length - 1) {
-				var allUniqueUrls = jQuery.unique(allUrls);
-				var allUrlsCount = allUniqueUrls.length;
+        // Check it urls are working
+        if( index == commasepratearray.length - 1) {
+        var allUniqueUrls = jQuery.unique(allUrls);
+        var allUrlsCount = allUniqueUrls.length;
 
-				// Setting the timer
-				var timer = setInterval( function() {
-				  if(allUrlsCount>0) {
-					var index = allUrlsCount-1;
-					var url = allUrls[index]
-					console.log(url, index, "url")
-					window.open(url, "_blank")
-					allUrlsCount--;
-				  }
-				  else {
-					clearInterval(timer)
-				  }
-				}, 100);
-			  }
+        // Setting the timer
+        var timer = setInterval( function() {
+          if(allUrlsCount>0) {
+          var index = allUrlsCount-1;
+          var url = allUrls[index]
+          console.log(url, index, "url")
+          window.open(url, "_blank")
+          allUrlsCount--;
+          }
+          else {
+          clearInterval(timer)
+          }
+        }, 100);
+        }
 
-			})
-		  }
-		}
-		else {
-		  alert("Please enter an value")
-		} 
-	  }
-		
+      })
+      }
+    }
+    else {
+      alert("Please enter an value")
+    } 
+    }
+    
     function startDownload(parentId) {
       if(parentId) {
         var pId    = jQuery(parentId).attr("data-parentId")
@@ -210,99 +299,12 @@ table.ytContainer td {
 </script>
 <?php
 get_footer();
-if( !empty($_GET['you_tube_url']) ) {
-	$you_tube_url = $_GET['you_tube_url'];
-	if (filter_var($you_tube_url, FILTER_VALIDATE_URL)) {
-		$parts = parse_url($you_tube_url);
-		parse_str($parts['query'], $query);
-		// Getting the params
-		if( !empty($query['v']) ) {
-		  $videoId = $query['v'];
-			
-		  $lang = 'en';
-		  if (!empty($_GET['lang'])) {
-			$lang = $_GET['lang'];
-		  }
-			
-		  $videoDetails = getVideoDetails($videoId);
-		  $oXML = getCaption($videoId,$lang);
-		  $captionsXml = getCaptionsXml($videoId,$lang);
-
-			if($videoDetails && $oXML && $captionsXml) {
-				$items    = count($oXML['text']);
-				$ytDuration = $videoDetails['items'][0]['contentDetails']['duration'];
-				$duration = covtime($ytDuration);
-				if($duration) {
-					$times = explode(":", $duration);
-					$hour = $times[0];
-					$minutes = $times[1];
-					$seconds = $times[2];
-					$duration = $hour*3600+$minutes*60+$seconds;
-					$npaths   = getXpathFromVideoDuration($duration);
-
-					// If npaths are present like 2, 4, 6, 8 etc it will generate rows
-					$rows = '';
-					if($npaths) {
-						foreach ($npaths as $i => $number) {
-							$n = round(($number/10)*$items);
-
-							$cells = '';
-							// Getting the nth, nth+1 path so it will generate columns
-							for ($i=0; $i <=2 ; $i++) {
-								$string = '';
-								$durations = [];
-
-								// Removing the semicolon, comma from string so that proper column generate
-								$text = formatCsvColumn($oXML['text'][$n+$i]);
-
-								// Getting the timestamps for each nth path from xml response
-								$j = 0;
-								foreach ($captionsXml->text as $data) {
-									if($j == $n+$i) {
-										// foreach ($data->attributes() as $k => $v) {
-										$dataArray = json_decode(json_encode($data),true);
-										$durations = $dataArray['@attributes'];
-									}
-									$j++;
-								}
-								if(count($durations) > 0) {
-									$startTime = convertTime($durations['start']);
-									// $startTime = $durations['start'];
-									$timestamp = $startTime;
-								}
-								else {
-									$timestamp = '';
-								}
-								$cells .= $timestamp.';'.$text.';';
-							}
-							$rows .= $you_tube_url.';'.$cells;
-						}
-					}
-
-					// print_r($rows);
-					// echo $formatedString = str_putcsv($rows);
-					downloadCsv($rows);
-					// echo '<pre>';
-					// print_r($oXML['text']);
-					// echo '</pre>';
-				}
-			}
-		}
-	}
-	else {
-    // echo $you_tube_url." is not a valid URL";
-		global $wp;
-		$redirectUrl = home_url( $wp->request )."/?errmsg=".$you_tube_url." is not a valid URL";
-		wp_redirect($redirectUrl);
-		die;
-	}
-}
 
 function redirectWithMsg() {
-	// global $wp;
-	// $redirectUrl = home_url( $wp->request )."/?errmsg=".$you_tube_url." is not a valid URL";
-	// wp_redirect($redirectUrl);
-	// die;
+  // global $wp;
+  // $redirectUrl = home_url( $wp->request )."/?errmsg=".$you_tube_url." is not a valid URL";
+  // wp_redirect($redirectUrl);
+  // die;
 }
 
 function formatCsvColumn( $string ) {
@@ -318,13 +320,13 @@ function formatCsvColumn( $string ) {
 //   curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 //   $xmlfile = curl_exec($ch);
 //   curl_close($ch);
-// 	// If response is not empty then xml
-// 	if( !empty($xmlfile) ) {
-// 		return simplexml_load_string($xmlfile);
-// 	} else {
-// 		echo "$url doesn't have any captions";
-// 		die;
-// 	}
+//  // If response is not empty then xml
+//  if( !empty($xmlfile) ) {
+//    return simplexml_load_string($xmlfile);
+//  } else {
+//    echo "$url doesn't have any captions";
+//    die;
+//  }
 // }
 
 function getCaption($videoId, $lang='en') {
@@ -397,8 +399,8 @@ function getXpathFromVideoDuration($videoDuration) {
 }
 
 function downloadCsv($csvString) {
-	ob_clean();
-	ob_start();
+  ob_clean();
+  ob_start();
   $fileName = 'extracted_captions_'.time();
   header('Content-Type: application/csv');
   header('Content-Disposition: attachment; filename="'.$fileName.'.csv";');
@@ -415,8 +417,8 @@ function str_putcsv($input, $delimiter = ',', $enclosure = '"') {
 }
 
 function convertTime($seconds){
-	$t = round($seconds);
-	return sprintf('%02d:%02d:%02d', ($t/3600),($t/60%60), $t%60);
+  $t = round($seconds);
+  return sprintf('%02d:%02d:%02d', ($t/3600),($t/60%60), $t%60);
 }
 
 function callGetRequest($url) {
