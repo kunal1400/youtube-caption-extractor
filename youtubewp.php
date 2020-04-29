@@ -5,7 +5,7 @@
 
 if( !empty($_GET['you_tube_url']) ) {
   $you_tube_url = $_GET['you_tube_url'];
-  if (filter_var($you_tube_url, FILTER_VALIDATE_URL)) {
+  if ($you_tube_url) {
     $parts = parse_url($you_tube_url);
     parse_str($parts['query'], $query);
     // Getting the params
@@ -20,6 +20,13 @@ if( !empty($_GET['you_tube_url']) ) {
       $videoDetails = getVideoDetails($videoId);
       $oXML = getCaption($videoId,$lang);
       $captionsXml = getCaptionsXml($videoId,$lang);
+
+      if( !empty($videoDetails['error']) ) {
+        echo '<pre>';
+        print_r($videoDetails);
+        echo '</pre>';
+        die;
+      }
 
       if($videoDetails && $oXML && $captionsXml) {
         $items    = count($oXML['text']);
@@ -208,16 +215,17 @@ table.ytContainer td {
         // Setting the timer
         var timer = setInterval( function() {
           if(allUrlsCount>0) {
-          var index = allUrlsCount-1;
-          var url = allUrls[index]
-          console.log(url, index, "url")
-          window.open(url, "_blank")
-          allUrlsCount--;
+            var index = allUrlsCount-1;
+            var url = allUrls[index]
+            console.log(url, index, "url")
+            window.open(url, "_blank")
+            allUrlsCount--;
           }
           else {
-          clearInterval(timer)
+            document.getElementsByTagName("textarea")[0].value = ""
+            clearInterval(timer)
           }
-        }, 100);
+        }, 300);
         }
 
       })
@@ -336,7 +344,7 @@ function getCaption($videoId, $lang='en') {
 }
 
 function getVideoDetails( $videoId ) {
-  $apiKey = "AIzaSyBMhJcBZwWB_d-0S53ulC8psZO5dHCvleY";
+  $apiKey = "AIzaSyD4ZVYDZCE9MViGtNwr7AgBNN8X5K7qWiU";
   if(!empty($apiKey)) {
     $url = "https://www.googleapis.com/youtube/v3/videos?id=$videoId&part=contentDetails&key=$apiKey";
     if( !empty($videoId) ) {
