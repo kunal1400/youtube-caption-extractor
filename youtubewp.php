@@ -28,10 +28,11 @@ if( !empty($_GET['you_tube_url']) ) {
         die;
       }
 
-      if($videoDetails && $oXML && $captionsXml) {
+      if($videoDetails && $oXML && $captionsXml) {		  
         $items    = count($oXML['text']);
         $ytDuration = $videoDetails['items'][0]['contentDetails']['duration'];
         $duration = covtime($ytDuration);
+		  
         if($duration) {
           $times = explode(":", $duration);
           $hour = $times[0];
@@ -53,7 +54,7 @@ if( !empty($_GET['you_tube_url']) ) {
                 $durations = [];
 
                 // Removing the semicolon, comma from string so that proper column generate
-                $text = formatCsvColumn($oXML['text'][$n+$i]);
+                $text = formatCsvColumn($oXML['text'][$n+$i][0]);
 
                 // Getting the timestamps for each nth path from xml response
                 $j = 0;
@@ -344,7 +345,7 @@ function getCaption($videoId, $lang='en') {
 }
 
 function getVideoDetails( $videoId ) {
-  $apiKey = "AIzaSyD4ZVYDZCE9MViGtNwr7AgBNN8X5K7qWiU";
+  $apiKey = "AIzaSyDPuRySTDvdT0wgEzIFWtQdz6fAYW4WUZs";
   if(!empty($apiKey)) {
     $url = "https://www.googleapis.com/youtube/v3/videos?id=$videoId&part=contentDetails&key=$apiKey";
     if( !empty($videoId) ) {
